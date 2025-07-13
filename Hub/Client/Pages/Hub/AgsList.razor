@@ -1,0 +1,148 @@
+﻿@page "/AgsList"
+
+@using global::Hub.Client.Interface;
+@using global::Hub.Client.Model;
+@using global::Hub.Shared;
+@using global::Hub.Shared.Model.Hub.Login;
+@inject IJSRuntime JSRuntime
+<link href="css/app.css" rel="stylesheet" />
+
+@if (showWarning) 
+{
+    <div class="alert alert-warning" role="alert">
+        Not normal 
+    </div>
+}
+<PageTitle>AgsList</PageTitle>
+
+<div class="content-container" style="background-color: #f4f6f9; min-height: 100vh; padding: 20px; margin: 0 auto;">
+    <!-- Header Section -->
+    <header class="text-center mb-5">
+    </header>
+
+    <!-- Site List Section -->
+    <section class="container">
+        <div class="row">
+            <!-- Main Service List -->
+            <div class="col-12 mb-5">
+                <h2 style="font-weight: 600; color: #5a54e0; margin-bottom: 20px; font-size: 1.5rem;">Main Services</h2>
+                <ul class="list-group">
+                    @foreach (var item in Common.loginData.responseXperpLogins.Select(x => x.dbLink).Distinct())
+                    {
+                        var enumExists = Enum.TryParse<DBLink>(item, out var parsedEnum);
+                        if (enumExists)
+                        {
+                            var site = Common.agsSiteList.FirstOrDefault(o => o.dbLink.Equals(parsedEnum));
+
+                            <li class="list-group-item d-flex align-items-center" style="border: none; background-color: #ffffff; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                                <img src="@site?.imageAddress" alt="@site?.siteName" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover; border: 2px solid #6c63ff;" />
+                                <div class="d-flex flex-column">
+                                    <span style="font-size: 1.1rem; font-weight: bold; color: #343a40;">@site?.siteName</span>
+                                    <small style="color: #6c757d;">@item</small>
+                                </div>
+                                <button class="btn btn-outline-primary ms-auto" @onclick="() => handleIconClick(site)" style="border-radius: 20px;">Connect</button>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+
+            <!-- Additional Services -->
+            <div class="col-12">
+                <h2 style="font-weight: 600; color: #5a54e0; margin-bottom: 20px; font-size: 1.5rem;">add Services</h2>
+                <div class="row">
+                    <!-- Tier1 Services -->
+                    <div class="col-md-6">
+                        <h3 style="font-weight: bold; color: #343a40; margin-bottom: 15px;">Tier 1</h3>
+                        <ul class="list-group">
+                            @foreach (var item in Common.appliedServices.Where(x => x.additionalService.tier == Tier.Tier1))
+                            {
+                                <li class="list-group-item d-flex align-items-center" style="border: none; background-color: #ffffff; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                                    <img src="@item?.additionalService.imageAddress" alt="@item?.additionalService.name" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover; border: 2px solid #6c63ff;" />
+                                    <div class="d-flex flex-column">
+                                        <span style="font-size: 1.1rem; font-weight: bold; color: #343a40;">@item?.additionalService.name</span>
+                                        <small style="color: #6c757d;">@item</small>
+                                    </div>
+                                    <button class="btn btn-outline-primary ms-auto" @onclick="() => AdditionalServiceClick(item)" style="border-radius: 20px;">Connect</button>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                    <!-- Tier2 Services -->
+                    <div class="col-md-6">
+                        <h2 style="font-weight: 600; color: #5a54e0; margin-bottom: 20px; font-size: 1.5rem;">add Services2</h2>
+                        <ul class="list-group">
+                            @foreach (var item in Common.appliedServices.Where(x => x.additionalService.tier == Tier.Tier2))
+                            {
+                                <li class="list-group-item d-flex align-items-center" style="border: none; background-color: #ffffff; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                                    <img src="@item?.additionalService.imageAddress" alt="@item?.additionalService.name" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover; border: 2px solid #6c63ff;" />
+                                    <div class="d-flex flex-column">
+                                        <span style="font-size: 1.1rem; font-weight: bold; color: #343a40;">@item?.additionalService.name</span>
+                                        <small style="color: #6c757d;">@item</small>
+                                    </div>
+                                    <button class="btn btn-outline-primary ms-auto" @onclick="() => AdditionalServiceClick(item)" style="border-radius: 20px;">Connect</button>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+@code {
+    private bool showWarning = false;
+
+    private async Task AdditionalServiceClick(iAdditionalService service)
+    {
+        if (service == null)
+        {
+            Console.WriteLine("Invalid site URL.");
+        }
+        else
+        {
+            await service.ApplyService();
+        }
+    }
+
+    private async Task handleIconClick(SiteAddress siteAddress)
+    {
+        if (siteAddress == null)
+        {
+            Console.WriteLine("Invalid site URL.");
+        }
+        else
+        {
+            await OpenIEHubLogin(siteAddress);
+        }
+    }
+
+    private async Task OpenIEHubLogin(SiteAddress siteAddress)
+    {
+        if (Common.loginData?.responseXperpLogins?.Count <=0 )
+        {
+            return;
+        }
+        ResponseXperpLogin item = Common.loginData?.responseXperpLogins.Find(o => o.dbLink.Equals(siteAddress.dbLink.ToString()));
+        if (item != null)
+        {
+            showWarning = false;
+            string id = item.userId;
+            string pw = item.userPw;
+            string temp = GlobalFunction.PwRandom(15);
+            string hubRandom = GlobalFunction.GetRandom(id, temp);
+            string hashValue = GlobalFunction.ConvertEncryption(hubRandom);
+            string url = ($"https://{siteAddress.siteName}/comm/hubLogin.do??hub_random={hubRandom}&hub_secret={hashValue}&user_id={id}&user_pw={pw}&sType={GlobalFunction.ConvertStringFromDBLink(siteAddress.dbLink)}");
+            await JSRuntime.InvokeVoidAsync("open", url, "_blank");
+        }
+        else
+        {
+            showWarning = true;
+        }
+    }
+
+
+}

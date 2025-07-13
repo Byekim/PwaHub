@@ -1,0 +1,48 @@
+﻿@page "/MainPage"
+<link href="css/app.css" rel="stylesheet" />
+
+<h3>MainPage</h3>
+@inherits LayoutComponentBase
+@inject SignalRService SignalRService
+
+@if (!isLoggedIn)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <p>You must log in to access this page.</p>
+        <NavLink href="/" class="btn btn-primary">Go to Login</NavLink>
+    </div>
+}
+else
+{
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar bg-light p-3">
+            <NavMenu />
+        </div>
+
+
+        <!-- Main Content -->
+        <main class="flex-grow-1 bg-light p-4" style="border-left: 2px solid #ddd;">
+            <div class="top-row d-flex justify-content-between align-items-center mb-4">
+                <h4 class="text-primary" style="font-weight: 600;">Welcome to MainPage</h4>
+                <a href="https://docs.microsoft.com/aspnet/" target="_blank" class="btn btn-info">
+                    <i class="bi bi-info-circle"></i> About
+                </a>
+            </div>
+
+            <article class="content">
+                <!-- Display the AgsList component here -->
+                <counter></counter>
+            </article>
+        </main>
+    </div>
+}
+
+
+
+@code {
+    bool isLoggedIn { get; set; } = false;
+
+
+  
+}

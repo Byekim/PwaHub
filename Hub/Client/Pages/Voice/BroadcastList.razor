@@ -1,0 +1,229 @@
+﻿@page "/Voice/BroadcastList"
+
+@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SignalRService SignalRService
+@inject NavigationManager NavigationManager
+
+@using NetworkLibrary;
+@using System.Linq;
+@using Radzen;
+@using Radzen.Blazor;
+@using global::Hub.Client.Pages.Voice.Dialog;
+
+@using global::Hub.Shared.Voice;
+@using global::Hub.Shared.Voice.Request;
+@using global::Hub.Shared;
+
+<PageTitle>G.P.A | Main</PageTitle>
+
+<h3>Dashboard</h3>
+<RadzenButton Text="추가" Icon="add_circle_outline" Style="margin-right: 10px;"
+              ButtonStyle="ButtonStyle.Primary" Click="@AddData" />
+
+<RadzenButton Text="수정" Icon="edit" Style="margin-right: 10px;"
+              ButtonStyle="ButtonStyle.Secondary" Click="@EditData" />
+
+<RadzenButton Text="삭제" Icon="delete" Style="margin-right: 10px;"
+              ButtonStyle="ButtonStyle.Danger" Click="@DeleteData" />
+
+<RadzenButton Text="새로고침" Icon="refresh"
+              ButtonStyle="ButtonStyle.Info" Click="@RefreshData" />
+
+<RadzenButton Text="그룹추가" Icon="edit" Style="margin-right: 10px;"
+              ButtonStyle="ButtonStyle.Danger" Click="@AddGroup" />
+@if (isContentLoaded == true)
+{
+    @if (voiceBroadCasts?.Any() == true)
+    {
+        <div class="row my-5">
+            <div class="col-sm-12 col-lg-12">
+                <RadzenText TextStyle="TextStyle.H6">방송목록</RadzenText>
+                <RadzenCard>
+                    <RadzenDataGrid @ref="dataGrid" Data="@voiceBroadCasts" TItem="VoiceBroadCast"
+                                    FilterMode="FilterMode.Simple" AllowSorting="true"
+                                    AllowFiltering="true" AllowPaging="true" PageSize="10"
+                                    RowSelect="@OnRowSelect">
+
+                        <Columns>
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="number" Title="Number" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="seq" Title="Sequence" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="aptCd" Title="Apartment Code" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="body" Title="Body" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="use" Title="Use" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="voiceSpeed" Title="Voice Speed" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="id" Title="ID" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="aptI" Title="Apartment Indicator" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="backGroudSound" Title="Background Sound" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="modifyDate" Title="Modify Date" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="inputDate" Title="Input Date" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Property="broadcastType" Title="Broadcast Type" Visible="false" />
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Title="Group Name">
+                                <Template Context="data">
+                                    @data.voiceGroup.?.groupName
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="VoiceBroadCast" Title="Group Sequence">
+                                <Template Context="data">
+                                    @data.voiceGroup?.groupMaster?.groupSeq
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenCard>
+
+            </div>
+        </div>
+    }
+
+}
+else
+{
+    <div class="text-center my-5">
+        <h5>표시할 데이터가 없습니다.</h5>
+    </div>
+}
+
+
+
+@code {
+    private bool isLoggedIn { get; set; } = false;
+    private bool isContentLoaded = false;
+    private ColorScheme colorScheme = ColorScheme.Palette;
+
+    private IEnumerable<VoiceBroadCast>? voiceBroadCasts = new List<VoiceBroadCast>();
+    private RadzenDataGrid<VoiceBroadCast> dataGrid;
+    private VoiceBroadCast selectedBroadcast;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await GetData();
+
+
+    }
+    private void OnRowSelect(VoiceBroadCast broadcast)
+    {
+        selectedBroadcast = broadcast;
+    }
+
+    private async Task GetData()
+    {
+
+        string url = $@"{GlobalVariable.voiceServerApi}GetAllVoiceBroadcast";
+        RequestVoice requestVoice = new RequestVoice()
+            {
+                aptCd = Common.userData.aptCd,
+                id = Common.userData.userId,
+            };
+        var response = await Http.PostAsJsonAsync(url, requestVoice);
+        if (response.IsSuccessStatusCode)
+        {
+
+            this.voiceBroadCasts = await response.Content.ReadFromJsonAsync<List<VoiceBroadCast>>();
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error: {errorContent}");
+
+        }
+
+
+        this.isContentLoaded = true;
+    }
+
+    private void ShowNotification()
+    {
+        NotificationMessage message = new NotificationMessage
+            {
+                Severity = NotificationSeverity.Info,
+                Summary = "잠깐!",
+                Detail = "설정 확인 하셨나요?" + Environment.NewLine + "[환경 설정] > [설정] > [국가/언어] 확인하세요!",
+                Duration = 10000,
+                CloseOnClick = true,
+                Payload = DateTime.Now,
+            };
+
+        NotificationService.Notify(message);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var result = await DialogService.OpenAsync<NewVoiceBroadcastDialog>(
+            "방송 등록",
+            new Dictionary<string, object>(), // 필요한 매개변수 전달
+            new DialogOptions()
+                {
+                    Width = "800px",
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true
+                });
+
+        if (result != null)
+        {
+            // 새로고침 로직
+            await RefreshData();
+        }
+    }
+
+    private async Task AddData()
+    {
+        await OpenAddDialog();
+        Console.WriteLine("방송 추가 버튼 클릭됨");
+    }
+
+    private async Task AddGroup()
+    {
+        var result = await DialogService.OpenAsync<NewVoiceGroupDialog>(
+            "그룹 등록",
+            new Dictionary<string, object>(), // 필요한 매개변수 전달
+            new DialogOptions()
+                {
+                    Width = "800px",
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true
+                });
+
+        if (result != null)
+        {
+            // 새로고침 로직
+            await RefreshData();
+        }
+        Console.WriteLine("그룹 추가 버튼 클릭됨");
+    }
+
+
+    private async Task EditData()
+    {
+        if (selectedBroadcast == null)
+        {
+            Console.WriteLine("수정할 방송을 선택하세요.");
+            return;
+        }
+
+    }
+
+    private async Task DeleteData()
+    {
+        if (selectedBroadcast == null)
+        {
+            Console.WriteLine("삭제할 방송을 선택하세요.");
+            return;
+        }
+
+
+        // 데이터 다시 로드
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        Console.WriteLine("데이터 새로고침");
+        StateHasChanged();
+    }
+}

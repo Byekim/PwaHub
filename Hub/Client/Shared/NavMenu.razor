@@ -1,0 +1,33 @@
+﻿@inject NavigationManager NavigationManager
+
+<div class="collapse @NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="MainPage">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="AgsList">
+                <span class="oi oi-plus" aria-hidden="true"></span> AgsList
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="Voice/BroadcastList">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> 방송목록
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

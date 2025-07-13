@@ -1,0 +1,23 @@
+﻿@using Hub.Client.Pages;
+@using Hub.Client.Shared;
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        @if (routeData.PageType == typeof(Login))
+        {
+            <!-- Login 페이지는 Layout 없이 표시 -->
+            <RouteView RouteData="@routeData" DefaultLayout="null" />
+        }
+        else
+        {
+            <!-- 다른 모든 페이지는 MainLayout 적용 -->
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        }
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

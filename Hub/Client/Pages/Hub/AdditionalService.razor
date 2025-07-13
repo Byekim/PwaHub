@@ -1,0 +1,54 @@
+﻿@page "/AdditionalService"
+
+<h3>AdditionalService</h3>
+
+@using global::Hub.Client.Interface;
+@inject IJSRuntime JSRuntime
+<link href="css/app.css" rel="stylesheet" />
+
+<PageTitle>부가서비스</PageTitle>
+
+<div class="content-container" style="background-color: #f4f6f9; min-height: 100vh; padding: 20px; margin: 0 auto; ">
+    <!-- Header Section -->
+    <header class="text-center mb-5">
+        <h1 style="font-weight: bold; color: #6c63ff; font-size: 2.5rem;">부가서비스</h1>
+        <p style="font-size: 1.2rem; color: #6c757d;">부가서비스 상세페이지입니다. .</p>
+    </header>
+
+    <!-- Site List Section -->
+    <section class="container">
+        <div class="row">
+            <div class="col-12">
+                <ul class="list-group">
+                    @foreach (var item in Common.appliedServices)
+                    {
+                        <li class="list-group-item d-flex align-items-center" style="border: none; background-color: #ffffff; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                            <img src="@item?.additionalService.imageAddress" alt="@item?.additionalService.name" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover; border: 2px solid #6c63ff;" />
+                                <div class="d-flex flex-column">
+                                <span style="font-size: 1.1rem; font-weight: bold; color: #343a40;">@item?.additionalService.name</span>
+                                    <small style="color: #6c757d;">@item</small>
+                                </div>
+                                <button class="btn btn-outline-primary ms-auto" @onclick="() => handleIconClick(item)" style="border-radius: 20px;">Connect</button>
+                            </li>
+                        
+                    }
+                </ul>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+@code {
+    private async Task handleIconClick(iAdditionalService service)
+    {
+        if (service == null)
+        {
+            Console.WriteLine("Invalid site URL.");
+        }
+        else
+        {
+            await service.ApplyService();
+        }
+    }
+}

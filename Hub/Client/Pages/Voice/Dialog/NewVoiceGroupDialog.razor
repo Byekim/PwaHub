@@ -1,0 +1,78 @@
+﻿@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SignalRService SignalRService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject TtsApi TtsService
+
+@using Radzen;
+@using Radzen.Blazor;
+@using NetworkLibrary;
+@using System.Linq;
+@using global::Hub.Shared.Voice;
+@using global::Hub.Shared;
+
+<RadzenCard Style="max-width: 800px; padding: 20px;">
+    <RadzenText Text="📢 그룹 등록" TextStyle="TextStyle.H4" class="mb-3 d-block text-center" />
+
+    <div class="row">
+        <div class="col-md-6">
+            <RadzenTextBox @bind-Value="groupName" Placeholder="그룹 제목을 입력하세요"
+                           class="w-100 mb-3" />
+        </div>
+    </div>
+
+    <!-- 버튼 영역 (오른쪽 정렬) -->
+    <div class="d-flex justify-content-end mt-4">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="취소" Click="@(() => DialogService.Close(null))" class="me-2" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="저장" Click="@Save" />
+    </div>
+</RadzenCard>
+
+@code {
+    bool isLoggedIn { get; set; } = false;
+    public string groupName { get; set; } = string.Empty;
+    protected override async Task OnInitializedAsync()
+    {
+        // 로그인 상태 확인
+        await base.OnInitializedAsync();
+
+
+    }
+    private async Task Save()
+    {
+        Console.WriteLine("🚀 Save() 실행됨!");
+
+        if (string.IsNullOrEmpty(groupName))
+        {
+            Console.WriteLine("❌ 그룹이름이 없음");
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "그룹이름을 입력하세요.");
+            return;
+        }
+
+        GroupMaster newGroup = new()
+            {
+                aptCd = Common.userData.aptCd,
+                yn = "Y",
+                groupName = groupName
+            };
+
+        Console.WriteLine($"📌 그룹 저장 요청: {newGroup.groupName}");
+
+        ResultMsgStatus resultMsgStatus = await SignalRService.SendMethodAsync<GroupMaster, ResultMsgStatus>("SetVoiceGroup", newGroup);
+
+        if (resultMsgStatus == ResultMsgStatus.OK)
+        {
+            Console.WriteLine("✅ 그룹 저장 성공!");
+            NotificationService.Notify(NotificationSeverity.Success, "Success", "그룹 저장에 성공하였습니다.");
+            DialogService.Close(newGroup);
+        }
+        else
+        {
+            Console.WriteLine("❌ 그룹 저장 실패!");
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "저장에 실패하였습니다.");
+        }
+    }
+}
+

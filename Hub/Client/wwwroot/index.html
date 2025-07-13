@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Hub</title>
+    <base href="/" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="Hub.Client.styles.css" rel="stylesheet" />
+    <link href="manifest.json" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <script src="fileInterop.js"></script> <!-- 파일 인터롭 JS 파일 로드 -->
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=2.0.0"></script>
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/default-base.css">
+
+</head>
+<body>
+    <div id="app">
+        <div id="app" style="margin: 0 auto; width: 100vw; height: 100vh">
+            <div class="text-center pt-3" style="color: purple; font-size: 16pt">
+                XpHub에 오신것을 환영합니다.
+                잠시만 기다려주세요...
+            </div>
+            <div class="text-center mt-3">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
+                      style="font-size: 16pt; width: 36px; height: 36px; color: purple" />
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+
+</body>
+
+
+</html>

@@ -1,0 +1,172 @@
+﻿@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SignalRService SignalRService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject TtsApi TtsService
+
+@using Radzen;
+@using Radzen.Blazor;
+@using NetworkLibrary;
+@using System.Linq;
+@using global::Hub.Shared.Voice;
+@using global::Hub.Shared;
+
+
+<RadzenTemplateForm TItem="VoiceBroadCast" Model="newVoiceBroadcast" EnableValidation="false">
+    <RadzenCard Style="max-width: 800px; padding: 20px;">
+        <RadzenText Text="📢 방송 등록" TextStyle="TextStyle.H4" class="mb-3 d-block text-center" />
+
+        <div class="row">
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.title" Placeholder="방송 제목을 입력하세요"
+                               class="w-100 mb-3" />
+            </div>
+            <div class="col-md-6">
+
+                <RadzenDropDown @bind-Value="newVoiceBroadcast.speaker"
+                                Data="@Common.speakerList"
+                                TextProperty="Value"
+                                ValueProperty="Key"
+                                Placeholder="스피커 선택"
+                                class="w-100 mb-3"
+                                TValue="string"
+                                Change="@(args => newVoiceBroadcast.speaker = args.ToString())" />
+
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <RadzenNumeric @bind-Value="newVoiceBroadcast.voiceSpeed" Min="-5" Max="5" Step="1"
+                               Placeholder="음성 속도 조정" class="w-100 mb-3" />
+            </div>
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.backGroudSound" Placeholder="배경음 입력"
+                               class="w-100 mb-3" />
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.firstMent" Placeholder="인사말 입력"
+                               class="w-100 mb-3" />
+            </div>
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.body" Placeholder="방송 내용을 입력하세요"
+                               class="w-100 mb-3" />
+            </div>
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.middleMent" Placeholder="중간문 입력"
+                               class="w-100 mb-3" />
+            </div>
+            <div class="col-md-6">
+                <RadzenTextBox @bind-Value="newVoiceBroadcast.endMent" Placeholder="마침문 입력"
+                               class="w-100 mb-3" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <RadzenDropDown @bind-Value="newVoiceBroadcast.voiceGroup!.groupMaster!.groupSeq"
+                                Data="@Common.groupMasters" TextProperty="GroupName"
+                                ValueProperty="groupSeq"
+                                Placeholder="그룹 선택"
+                                class="w-100 mb-3"
+                                Change="OnGroupChanged" />
+            </div>
+        </div>
+
+        <!-- 버튼 영역 (오른쪽 정렬) -->
+        <div class="d-flex justify-content-end mt-4">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="취소" Click="@(() => DialogService.Close(null))" class="me-2" />
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="저장" Click="@Save" />
+            
+
+        </div>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public VoiceBroadCast newVoiceBroadcast { get; set; } = new()
+        {
+            //Ment = new Ment(),
+                voiceGroup = new VoiceBroadcastGroup
+                {
+                    groupMaster = new GroupMaster()
+                }
+
+        };
+
+
+
+    private async Task Save()
+    {
+
+        if(newVoiceBroadcast.voiceGroup?.groupMaster.groupSeq == 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "그룹을 선택하세요.");
+            return;
+        }
+        if (Enum.TryParse<Speaker>(newVoiceBroadcast.speaker, out var parsedSpeaker))
+        {
+            newVoiceBroadcast.speaker = parsedSpeaker.ToString();
+        }
+        if(await ProcessTtsAndSave() == false)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "TTS 처리에 실패하였습니다.");
+            return;
+        }
+        ResultMsgStatus resultMsgStatus = await SignalRService.SendMethodAsync<VoiceBroadCast, ResultMsgStatus>("AddVoiceBroadcast", newVoiceBroadcast);
+        if (resultMsgStatus == ResultMsgStatus.OK)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Success", "저장에 성공하였습니다.");
+            DialogService.Close(newVoiceBroadcast);
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "저장에 실패하였습니다.");
+        }
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+       await GetGroupList();
+       await base.OnInitializedAsync();
+        StateHasChanged();
+    }
+
+
+    private async Task GetGroupList()
+    {
+        Common.groupMasters = await SignalRService.SendMethodAsync<string, List<GroupMaster>>("GetVoiceGroup", Common.userData.aptCd);
+    }
+
+    private void OnGroupChanged(object value)
+    {
+        if (value is int selectedSeq)
+        {
+
+            newVoiceBroadcast.voiceGroup!.groupMaster = Common.groupMasters.FirstOrDefault(g => g.groupSeq == selectedSeq);
+        }
+    }
+
+    private async Task<bool> ProcessTtsAndSave()
+    {
+        byte[] responseBytes = await TtsService.ProcessTts(newVoiceBroadcast);
+        if (responseBytes == null)
+        {
+            return false;
+        }
+        // IndexedDB에 저장 (Blazor 컴포넌트에서 실행)
+        await JSRuntime.InvokeVoidAsync("indexedDBFunctions.saveData", newVoiceBroadcast.seq, responseBytes);
+        return true;
+    }
+
+}

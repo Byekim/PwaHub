@@ -1,0 +1,179 @@
+﻿@page "/login"
+@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject SignalRService SignalRService
+@inject NavigationManager NavigationManager
+@inject IAccessTokenProvider _accessTokenProvider
+@inject ILocalStorageService LocalStorage
+@inject NotificationService NotificationService
+
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+@using NetworkLibrary;
+@using Blazored.LocalStorage;
+
+@using Radzen;
+@using Radzen.Blazor
+@using global::Hub.Shared.Model.Hub.Login;
+@using global::Hub.Shared;
+
+<PageTitle>Hub Login</PageTitle>
+
+@if (isContentLoaded)
+{
+
+    <div class="row justify-content-center align-items-center" style="min-height: 100vh; background-color: #f7f9fc;">
+
+
+        <!-- Left side: Image banner -->
+        <div class="col-md-6 text-center d-none d-md-block">
+            <img src="https://ac.xperp.co.kr/xperp/res/Xphub_approval.png" alt="Banner Image"
+                 style="max-width: 80%; height: auto; border-radius: 20px; box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);" />
+        </div>
+        <!-- Right side: Login form -->
+        <div class="col-md-6 p-5" style="background-color: white; border-radius: 15px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);">
+            <EditForm Model="@user" OnValidSubmit="@LoginUser">
+                <!-- Heading -->
+                <div class="text-center mb-4">
+                    <h3 style="font-weight: bold; color: #6c63ff;">XpHub Login</h3>
+                    <p style="color: #6c757d;">Enter your credentials to access your account</p>
+                </div>
+
+                <!-- userId Field -->
+                <div class="form-group mb-3">
+                    <input class="form-control" @bind="user.userId" placeholder="ID"
+                           style="height: 50px; font-size: 16px; border-radius: 10px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);" />
+                </div>
+
+                <!-- pw Field -->
+                <div class="form-group mb-4">
+                    <input type="password" class="form-control" @bind="user.passWord" placeholder="Password" @onkeydown="HandleKeyPress"
+                           style="height: 50px; font-size: 16px; border-radius: 10px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);" />
+                </div>
+
+                <!-- Login Button and Sign Up Link -->
+                <div class="d-flex justify-content-between align-items-center">
+                    <RadzenButton Click="@LoginUser"
+                                  Disabled="@isLoading"
+                                  Style="background-color: #6c63ff; color: white; border-radius: 25px;
+                     padding: 12px 25px; font-size: 16px; font-weight: bold;
+                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                     transition: transform 0.2s ease;"
+                    @onmouseover="() => ChangeStyle(true)"
+                    @onmouseout="() => ChangeStyle(false)">
+
+                        @if (isLoading)
+                        {
+                            <span>Logging in...</span>
+                            <span class="spinner-border spinner-border-sm"
+                                  role="status" aria-hidden="true"
+                                  style="margin-left: 10px;"></span>
+                        }
+                        else
+                        {
+                            <span>Login</span>
+                        }
+                    </RadzenButton>
+
+
+                    <a href="/signup" class="text-decoration-none"
+                       style="font-size: 16px; color: #6c63ff; font-weight: bold;">Sign up</a>
+                </div>
+
+                <!-- Login Message -->
+                <div class="mt-4" style="color: red; font-weight: bold;">
+                    <span>@loginMessage</span>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+}
+
+@code {
+    private RequestXpErpBase user = new RequestXpErpBase();
+    private string loginMessage = string.Empty;
+    private bool isContentLoaded = false;
+    private bool isLoading = false;
+    private string buttonStyle = string.Empty;
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        this.isContentLoaded = true;
+
+
+    }
+
+    private async Task LoginUser()
+    {
+        if (!await this.ValidateUser())
+        {
+            return;
+        }
+        SignalRService.Initialize(NavigationManager, LocalStorage);
+        await SignalRService.StartConnectionAsync();
+        await SignalRService.SendMethodAsync("Login", user);
+        await SignalRService.JoinGroupAsync(Common.userData.aptCd);
+        NavigationManager.NavigateTo("/MainLayout");
+    }
+
+    private async Task<bool> ValidateUser()
+    {
+        loginMessage = "Loading...";
+        isLoading = true;
+        string url = $@"{GlobalVariable.hubServerApi}Login";
+        var content = user.ConvertHttpContent();
+
+        var response = await Http.PostAsJsonAsync(url, user);
+        bool flag = false;
+        if (response.IsSuccessStatusCode)
+        {
+            var responseLoginData = await response.Content.ReadFromJsonAsync<ResonseLoginData>();
+            if (responseLoginData?.resultMsgStatus == ResultMsgStatus.OK)
+            {
+                if (responseLoginData.responseXperpLogins.Count > 0)
+                {
+                    Common.loginData = responseLoginData;
+                    Common.userData = responseLoginData.responseXperpLogins[0];
+                    flag = true;
+                }
+                else
+                {
+                    loginMessage = "No data found.";
+                    flag = false;
+                }
+                flag = true;
+            }
+            else
+            {
+                loginMessage = responseLoginData?.message ?? string.Empty;
+                flag = false;
+            }
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error: {errorContent}");
+            loginMessage = Message.connectFailMessage;
+        }
+        isLoading = false;
+        return await Task.FromResult(flag);
+    }
+
+    private void ChangeStyle(bool isHovered)
+    {
+        buttonStyle = isHovered ? "transform: scale(1.1);" : "";
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await Task.Delay(100);
+            await LoginUser();
+        }
+    }
+
+}
